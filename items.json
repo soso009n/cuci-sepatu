@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "nama": "Converse Chuck Taylor",
+    "status": "Selesai",
+    "tanggalMasuk": "2025-10-01",
+    "tanggalSelesai": "2025-10-03"
+  },
+  {
+    "id": 2,
+    "nama": "Nike Air Max",
+    "status": "Selesai",
+    "tanggalMasuk": "2025-10-08",
+    "tanggalSelesai": "2025-10-09"
+  }
+]
