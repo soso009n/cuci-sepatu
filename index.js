@@ -1,97 +1,98 @@
+require('dotenv').config(); // Panggil dotenv di baris paling atas
 const express = require('express');
-const fs = require('fs'); // File System module
+const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
+
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-const DB_FILE = './items.json';
+// Ambil kredensial dari file .env
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Middleware untuk membaca JSON body dari request
-app.use(express.json());
+// Middleware
+app.use(cors()); // Mengaktifkan CORS
+app.use(express.json()); // Mem-parsing body request sebagai JSON
 
-// === Helper Functions ===
-// Fungsi untuk membaca data dari file JSON
-const readData = () => {
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    // Jika file tidak ada, kembalikan array kosong
-    return [];
-  }
-};
-
-// Fungsi untuk menulis data ke file JSON
-const writeData = (data) => {
-  // `JSON.stringify(data, null, 2)` untuk format JSON yang rapi
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-};
-
-// === API Endpoints ===
+// === API Endpoints (Versi Supabase) ===
 
 // 1. GET /items (Read All + Filter by Status)
-app.get('/items', (req, res) => {
+app.get('/items', async (req, res) => {
   const { status } = req.query;
-  let items = readData();
 
+  let query = supabase.from('items').select('*').order('created_at', { ascending: false });
+
+  // Jika ada query parameter 'status', tambahkan filter
   if (status) {
-    // Filter data jika ada query ?status=...
-    items = items.filter(
-      (item) => item.status.toLowerCase() === status.toLowerCase()
-    );
+    query = query.eq('status', status);
   }
 
-  res.status(200).json(items);
+  const { data, error } = await query;
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  res.status(200).json(data);
 });
 
 // 2. POST /items (Create)
-app.post('/items', (req, res) => {
-  const items = readData();
+app.post('/items', async (req, res) => {
   const { nama, status, tanggalMasuk, tanggalSelesai } = req.body;
 
-  // Validasi sederhana
+  // Validasi (sama seperti sebelumnya)
   if (!nama || !status || !tanggalMasuk) {
     return res.status(400).json({
       message: 'Error: Field nama, status, dan tanggalMasuk harus diisi.',
     });
   }
 
-  // Cari ID tertinggi, lalu + 1
-  const newId = items.length > 0 ? Math.max(...items.map((item) => item.id)) + 1 : 1;
-
   const newItem = {
-    id: newId,
     nama: nama,
     status: status,
     tanggalMasuk: tanggalMasuk,
     tanggalSelesai: tanggalSelesai || '-', // Default tanggalSelesai
   };
 
-  items.push(newItem);
-  writeData(items);
+  // .insert() ke Supabase
+  // .select() agar data yang baru dibuat dikembalikan
+  const { data, error } = await supabase
+    .from('items')
+    .insert(newItem)
+    .select();
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
 
   // Response sesuai README
   res.status(201).json({
     message: 'Data sepatu berhasil ditambahkan.',
+    // data: data[0] // Opsional jika ingin menampilkan data yang baru dibuat
   });
 });
 
 // 3. PUT /items/:id (Update)
-app.put('/items/:id', (req, res) => {
+app.put('/items/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const { status, tanggalSelesai } = req.body;
-  const items = readData();
+  const { status, tanggalSelesai } = req.body; // Hanya field ini yang di-update di README
 
-  const itemIndex = items.findIndex((item) => item.id === id);
+  const updateData = {};
+  if (status) updateData.status = status;
+  if (tanggalSelesai) updateData.tanggalSelesai = tanggalSelesai;
 
-  if (itemIndex === -1) {
+  const { data, error } = await supabase
+    .from('items')
+    .update(updateData)
+    .eq('id', id)
+    .select(); // .select() untuk mengecek apakah data ada
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  if (!data || data.length === 0) {
     return res.status(404).json({ message: 'Data tidak ditemukan.' });
   }
-
-  // Update data lama dengan data baru
-  const updatedItem = { ...items[itemIndex], ...req.body };
-  items[itemIndex] = updatedItem;
-  
-  writeData(items);
 
   // Response sesuai README
   res.status(200).json({
@@ -100,17 +101,21 @@ app.put('/items/:id', (req, res) => {
 });
 
 // 4. DELETE /items/:id (Delete)
-app.delete('/items/:id', (req, res) => {
+app.delete('/items/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const items = readData();
 
-  const newItems = items.filter((item) => item.id !== id);
+  const { data, error } = await supabase
+    .from('items')
+    .delete()
+    .eq('id', id)
+    .select(); // .select() untuk mengecek apakah data ada sebelum dihapus
 
-  if (items.length === newItems.length) {
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  if (!data || data.length === 0) {
     return res.status(404).json({ message: 'Data tidak ditemukan.' });
   }
-
-  writeData(newItems);
 
   // Response sesuai README
   res.status(200).json({

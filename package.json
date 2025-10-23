@@ -1,7 +1,7 @@
 {
   "name": "cuci-sepatu",
   "version": "1.0.0",
-  "description": "",
+  "description": "Proyek ini merupakan tugas responsi untuk modul Pembuatan API dengan JavaScript. API ini dibuat menggunakan Node.js dan Express.js, berfungsi untuk mengelola data sepatu yang sedang dicuci pada sebuah layanan jasa cuci sepatu.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,6 +10,19 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.19.2"
+    "@supabase/supabase-js": "^2.76.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soso009n/cuci-sepatu.git"
+  },
+  "bugs": {
+    "url": "https://github.com/soso009n/cuci-sepatu/issues"
+  },
+  "homepage": "https://github.com/soso009n/cuci-sepatu#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
